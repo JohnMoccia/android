@@ -4,145 +4,70 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Trillboards SDK — Curb Mobility</title>
-  <script src="https://imasdk.googleapis.com/js/sdkloader/ima3.js"></script>
-  <script src="https://unpkg.com/@trillboards/ads-sdk@2.1.1/dist/trillboards-lite.global.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #0a0a0a; color: #e0e0e0; font-family: monospace; min-height: 100vh; }
     .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid #1e1e1e; }
     .logo { font-size: 14px; letter-spacing: 0.1em; text-transform: uppercase; color: #c8f135; font-weight: bold; }
     .logo span { color: #555; }
-    #status-dot { width: 8px; height: 8px; border-radius: 50%; background: #555; display: inline-block; margin-right: 6px; }
-    #status-dot.ok { background: #c8f135; }
+    #status-dot { width: 8px; height: 8px; border-radius: 50%; background: #c8f135; display: inline-block; margin-right: 6px; }
     .main { display: flex; height: calc(100vh - 53px); }
-    .ad-stage { flex: 1; background: #000; position: relative; display: flex; align-items: center; justify-content: center; }
-    .ad-stage-placeholder { color: #333; font-size: 12px; text-align: center; }
-    #trillboards-container { position: absolute; inset: 0; }
-    .sidebar { width: 320px; background: #0f0f0f; border-left: 1px solid #1e1e1e; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+    .ad-stage { flex: 1; background: #000; position: relative; }
+    iframe { width: 100%; height: 100%; border: none; display: block; }
+    .sidebar { width: 280px; background: #0f0f0f; border-left: 1px solid #1e1e1e; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
     .panel-title { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: #555; margin-bottom: 10px; }
     .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid #1a1a1a; }
     .stat-key { font-size: 11px; color: #666; }
-    .stat-val { font-size: 11px; color: #888; word-break: break-all; text-align: right; max-width: 180px; }
+    .stat-val { font-size: 11px; color: #888; word-break: break-all; text-align: right; max-width: 160px; }
     .stat-val.ok { color: #c8f135; }
-    .stat-val.err { color: #ff4444; }
-    #event-log { font-size: 10px; color: #555; max-height: 300px; overflow-y: auto; }
-    .log-entry { padding: 3px 0; border-bottom: 1px solid #1a1a1a; }
-    .log-entry .evt { color: #c8f135; margin-right: 8px; }
-    button { padding: 8px 14px; font-size: 11px; font-family: monospace; border: 1px solid #333; background: #1a1a1a; color: #ccc; cursor: pointer; border-radius: 3px; margin: 4px; }
+    button { padding: 8px 14px; font-size: 11px; font-family: monospace; border: 1px solid #333; background: #1a1a1a; color: #ccc; cursor: pointer; border-radius: 3px; margin: 4px; width: 100%; }
     button.primary { background: #c8f135; color: #000; border-color: #c8f135; font-weight: bold; }
-    button:disabled { opacity: 0.3; cursor: not-allowed; }
   </style>
 </head>
 <body>
   <div class="header">
     <div class="logo">Curb <span>/</span> Trillboards SDK Test</div>
-    <div><span id="status-dot"></span><span id="status-text">not initialized</span></div>
+    <div><span id="status-dot"></span><span id="status-text">live</span></div>
   </div>
   <div class="main">
     <div class="ad-stage">
-      <div class="ad-stage-placeholder">ad display area</div>
-      <div id="trillboards-container"></div>
+      <iframe
+        id="ad-frame"
+        src="https://screen.trillboards.com/partner-sdk/embed.html?device=P_691cbdd4b3117cb1b692f4ae&waterfall=programmatic_only"
+        allow="autoplay; fullscreen"
+        allowfullscreen>
+      </iframe>
     </div>
     <div class="sidebar">
       <div>
         <div class="panel-title">Device Config</div>
-        <div class="stat-row"><span class="stat-key">fingerprint</span><span class="stat-val">P_691cbdd4b3117cb1b692f4ae</span></div>
+        <div class="stat-row"><span class="stat-key">fingerprint</span><span class="stat-val ok">P_691cbdd4b3117cb1b692f4ae</span></div>
         <div class="stat-row"><span class="stat-key">screen_id</span><span class="stat-val">69a076ad2ccbba67a5ba1c1e</span></div>
-        <div class="stat-row"><span class="stat-key">waterfall</span><span class="stat-val">programmatic_only</span></div>
+        <div class="stat-row"><span class="stat-key">waterfall</span><span class="stat-val ok">programmatic_only</span></div>
+        <div class="stat-row"><span class="stat-key">venue</span><span class="stat-val">transportation/taxi</span></div>
       </div>
       <div>
-        <div class="panel-title">SDK State</div>
-        <div class="stat-row"><span class="stat-key">initialized</span><span class="stat-val" id="s-initialized">—</span></div>
-        <div class="stat-row"><span class="stat-key">isPlaying</span><span class="stat-val" id="s-playing">—</span></div>
-        <div class="stat-row"><span class="stat-key">programmatic</span><span class="stat-val" id="s-programmatic">—</span></div>
-        <div class="stat-row"><span class="stat-key">adCount</span><span class="stat-val" id="s-adcount">0</span></div>
+        <div class="panel-title">Embed Status</div>
+        <div class="stat-row"><span class="stat-key">source</span><span class="stat-val ok">screen.trillboards.com</span></div>
+        <div class="stat-row"><span class="stat-key">IMA</span><span class="stat-val ok">managed by Trillboards</span></div>
+        <div class="stat-row"><span class="stat-key">waterfall</span><span class="stat-val ok">managed by Trillboards</span></div>
       </div>
       <div>
-        <div class="panel-title">Event Log</div>
-        <div id="event-log"><div style="color:#333">waiting...</div></div>
-      </div>
-      <div>
-        <button class="primary" id="btn-init">Init SDK</button>
-        <button id="btn-refresh">Refresh</button>
-        <button id="btn-show">Show</button>
-        <button id="btn-hide">Hide</button>
+        <button class="primary" onclick="reloadAd()">Reload Ad</button>
+        <button onclick="toggleFullscreen()">Fullscreen</button>
       </div>
     </div>
   </div>
 <script>
-  let sdk = null;
-  let adCount = 0;
-
-  function log(event, data) {
-    const el = document.getElementById('event-log');
-    const t = new Date().toLocaleTimeString();
-    const entry = document.createElement('div');
-    entry.className = 'log-entry';
-    entry.innerHTML = '<span style="color:#555">' + t + '</span> <span class="evt">' + event + '</span> <span style="color:#666">' + (data ? JSON.stringify(data) : '') + '</span>';
-    el.insertBefore(entry, el.firstChild);
+  function reloadAd() {
+    const frame = document.getElementById('ad-frame');
+    frame.src = frame.src;
   }
-
-  function updateState() {
-    if (!sdk) return;
-    try {
-      const s = sdk._instance ? sdk._instance.state : null;
-      if (s) {
-        document.getElementById('s-initialized').textContent = s.initialized ? 'true' : 'false';
-        document.getElementById('s-initialized').className = 'stat-val ' + (s.initialized ? 'ok' : '');
-        document.getElementById('s-playing').textContent = s.isPlaying ? 'true' : 'false';
-        document.getElementById('s-playing').className = 'stat-val ' + (s.isPlaying ? 'ok' : '');
-        document.getElementById('s-programmatic').textContent = s.programmaticPlaying ? 'true' : 'false';
-        document.getElementById('s-programmatic').className = 'stat-val ' + (s.programmaticPlaying ? 'ok' : '');
-      }
-    } catch(e) {}
+  function toggleFullscreen() {
+    const frame = document.getElementById('ad-frame');
+    if (frame.requestFullscreen) frame.requestFullscreen();
+    else if (frame.webkitRequestFullscreen) frame.webkitRequestFullscreen();
   }
-
-  document.getElementById('btn-init').addEventListener('click', async function() {
-    document.getElementById('btn-init').disabled = true;
-    try {
-      log('init', {deviceId: 'P_691cbdd4b3117cb1b692f4ae'});
-      await window.TrillboardsLite.init({
-        deviceId: 'P_691cbdd4b3117cb1b692f4ae',
-        waterfall: 'programmatic_only',
-        autoStart: true,
-        debug: true,
-      });
-      sdk = window.TrillboardsLite;
-      document.getElementById('status-dot').className = 'ok';
-      document.getElementById('status-text').textContent = 'initialized';
-      document.getElementById('s-initialized').textContent = 'true';
-      document.getElementById('s-initialized').className = 'stat-val ok';
-
-      sdk.on('ads_refreshed', function(data) {
-        log('ads_refreshed', data);
-        if (data && data.count > 0) { adCount += data.count; document.getElementById('s-adcount').textContent = adCount; }
-        updateState();
-      });
-      sdk.on('programmatic_timeout', function(data) { log('programmatic_timeout', data); updateState(); });
-      sdk.on('programmatic_no_fill', function(data) { log('programmatic_no_fill', data); updateState(); });
-      sdk.on('programmatic_fill', function(data) { log('programmatic_fill', data); updateState(); });
-      sdk.on('ad_start', function(data) { log('ad_start', data); updateState(); });
-      sdk.on('ad_end', function(data) { log('ad_end', data); updateState(); });
-      sdk.on('error', function(data) { log('error', data); });
-
-      setInterval(updateState, 2000);
-    } catch(e) {
-      log('error', {message: e.message});
-      document.getElementById('s-initialized').textContent = 'error';
-      document.getElementById('s-initialized').className = 'stat-val err';
-      document.getElementById('btn-init').disabled = false;
-    }
-  });
-
-  document.getElementById('btn-refresh').addEventListener('click', function() {
-    if (sdk) { log('cmd', 'refresh'); sdk.refresh(); }
-  });
-  document.getElementById('btn-show').addEventListener('click', function() {
-    if (sdk) { sdk.show(); document.getElementById('trillboards-container').style.display = 'block'; }
-  });
-  document.getElementById('btn-hide').addEventListener('click', function() {
-    if (sdk) { sdk.hide(); document.getElementById('trillboards-container').style.display = 'none'; }
-  });
 </script>
 </body>
 </html>
