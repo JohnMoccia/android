@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Trillboards SDK — Curb Mobility</title>
-  <script src="https://cdn.trillboards.com/sdk/trillboards-connect.min.js"></script>
+  <script src="https://unpkg.com/@trillboards/ads-sdk@2.1.1/dist/trillboards-lite.global.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #0a0a0a; color: #e0e0e0; font-family: monospace; min-height: 100vh; }
@@ -21,14 +21,13 @@
     .panel-title { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: #555; margin-bottom: 10px; }
     .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid #1a1a1a; }
     .stat-key { font-size: 11px; color: #666; }
-    .stat-val { font-size: 11px; color: #888; }
+    .stat-val { font-size: 11px; color: #888; word-break: break-all; text-align: right; max-width: 180px; }
     .stat-val.ok { color: #c8f135; }
     .stat-val.err { color: #ff4444; }
-    #event-log { font-size: 10px; color: #555; max-height: 200px; overflow-y: auto; }
+    #event-log { font-size: 10px; color: #555; max-height: 300px; overflow-y: auto; }
     .log-entry { padding: 3px 0; border-bottom: 1px solid #1a1a1a; }
     .log-entry .evt { color: #c8f135; margin-right: 8px; }
-    button { padding: 8px 14px; font-size: 11px; font-family: monospace; border: 1px solid #333; background: #1a1a1a; color: #ccc; cursor: pointer; border-radius: 3px; }
-    button:hover { background: #252525; }
+    button { padding: 8px 14px; font-size: 11px; font-family: monospace; border: 1px solid #333; background: #1a1a1a; color: #ccc; cursor: pointer; border-radius: 3px; margin: 4px; }
     button.primary { background: #c8f135; color: #000; border-color: #c8f135; font-weight: bold; }
     button:disabled { opacity: 0.3; cursor: not-allowed; }
   </style>
@@ -46,17 +45,16 @@
     <div class="sidebar">
       <div>
         <div class="panel-title">Device Config</div>
-        <div class="stat-row"><span class="stat-key">deviceId</span><span class="stat-val">curb-nyc-tablet-001</span></div>
-        <div class="stat-row"><span class="stat-key">apiKey</span><span class="stat-val">trb_partner_srdd...</span></div>
         <div class="stat-row"><span class="stat-key">fingerprint</span><span class="stat-val">P_691cbdd4b3117cb1b692f4ae</span></div>
         <div class="stat-row"><span class="stat-key">screen_id</span><span class="stat-val">69a076ad2ccbba67a5ba1c1e</span></div>
+        <div class="stat-row"><span class="stat-key">waterfall</span><span class="stat-val">programmatic_only</span></div>
       </div>
       <div>
         <div class="panel-title">SDK State</div>
         <div class="stat-row"><span class="stat-key">initialized</span><span class="stat-val" id="s-initialized">—</span></div>
-        <div class="stat-row"><span class="stat-key">ready</span><span class="stat-val" id="s-ready">—</span></div>
-        <div class="stat-row"><span class="stat-key">adPlaying</span><span class="stat-val" id="s-playing">—</span></div>
-        <div class="stat-row"><span class="stat-key">fingerprint</span><span class="stat-val" id="s-fingerprint">—</span></div>
+        <div class="stat-row"><span class="stat-key">isPlaying</span><span class="stat-val" id="s-playing">—</span></div>
+        <div class="stat-row"><span class="stat-key">programmatic</span><span class="stat-val" id="s-programmatic">—</span></div>
+        <div class="stat-row"><span class="stat-key">adCount</span><span class="stat-val" id="s-adcount">0</span></div>
       </div>
       <div>
         <div class="panel-title">Event Log</div>
@@ -64,11 +62,15 @@
       </div>
       <div>
         <button class="primary" id="btn-init">Init SDK</button>
+        <button id="btn-refresh">Refresh</button>
+        <button id="btn-show">Show</button>
+        <button id="btn-hide">Hide</button>
       </div>
     </div>
   </div>
 <script>
   let sdk = null;
+  let adCount = 0;
 
   function log(event, data) {
     const el = document.getElementById('event-log');
@@ -79,65 +81,66 @@
     el.insertBefore(entry, el.firstChild);
   }
 
-  document.getElementById('btn-init').addEventListener('click', function() {
+  function updateState() {
+    if (!sdk) return;
     try {
-      document.getElementById('btn-init').disabled = true;
-      document.getElementById('s-initialized').textContent = 'initializing...';
+      const s = sdk._instance ? sdk._instance.state : null;
+      if (s) {
+        document.getElementById('s-initialized').textContent = s.initialized ? 'true' : 'false';
+        document.getElementById('s-initialized').className = 'stat-val ' + (s.initialized ? 'ok' : '');
+        document.getElementById('s-playing').textContent = s.isPlaying ? 'true' : 'false';
+        document.getElementById('s-playing').className = 'stat-val ' + (s.isPlaying ? 'ok' : '');
+        document.getElementById('s-programmatic').textContent = s.programmaticPlaying ? 'true' : 'false';
+        document.getElementById('s-programmatic').className = 'stat-val ' + (s.programmaticPlaying ? 'ok' : '');
+      }
+    } catch(e) {}
+  }
 
-      sdk = TrillboardsConnect.init({
-        apiKey: 'trb_partner_srddcJroSLYdOrWqSKBksBwc7yyi2R37',
-        deviceId: 'curb-nyc-tablet-001',
-        containerId: 'trillboards-container',
-        options: {
-          heartbeatInterval: 60000,
-          adInterval: 60,
-          muted: false,
-          offlineCache: true,
-          analytics: true
-        }
+  document.getElementById('btn-init').addEventListener('click', async function() {
+    document.getElementById('btn-init').disabled = true;
+    try {
+      log('init', {deviceId: 'P_691cbdd4b3117cb1b692f4ae'});
+      await window.TrillboardsLite.init({
+        deviceId: 'P_691cbdd4b3117cb1b692f4ae',
+        waterfall: 'programmatic_only',
+        autoStart: true,
+        debug: true,
       });
-
-      document.getElementById('s-initialized').textContent = 'true';
-      document.getElementById('s-initialized').className = 'stat-val ok';
+      sdk = window.TrillboardsLite;
       document.getElementById('status-dot').className = 'ok';
       document.getElementById('status-text').textContent = 'initialized';
-      log('init', {deviceId: 'curb-nyc-tablet-001'});
+      document.getElementById('s-initialized').textContent = 'true';
+      document.getElementById('s-initialized').className = 'stat-val ok';
 
-      sdk.on('ready', function(data) {
-        log('ready', data);
-        document.getElementById('s-ready').textContent = 'true';
-        document.getElementById('s-ready').className = 'stat-val ok';
-        if (data && data.fingerprint) {
-          document.getElementById('s-fingerprint').textContent = data.fingerprint;
-        }
+      sdk.on('ads_refreshed', function(data) {
+        log('ads_refreshed', data);
+        if (data && data.count > 0) { adCount += data.count; document.getElementById('s-adcount').textContent = adCount; }
+        updateState();
       });
+      sdk.on('programmatic_timeout', function(data) { log('programmatic_timeout', data); updateState(); });
+      sdk.on('programmatic_no_fill', function(data) { log('programmatic_no_fill', data); updateState(); });
+      sdk.on('programmatic_fill', function(data) { log('programmatic_fill', data); updateState(); });
+      sdk.on('ad_start', function(data) { log('ad_start', data); updateState(); });
+      sdk.on('ad_end', function(data) { log('ad_end', data); updateState(); });
+      sdk.on('error', function(data) { log('error', data); });
 
-      sdk.on('ad_start', function(data) {
-        log('ad_start', data);
-        document.getElementById('s-playing').textContent = 'true';
-        document.getElementById('s-playing').className = 'stat-val ok';
-      });
-
-      sdk.on('ad_end', function(data) {
-        log('ad_end', data);
-        document.getElementById('s-playing').textContent = 'false';
-      });
-
-      sdk.on('ad_error', function(data) {
-        log('ad_error', data);
-        document.getElementById('s-playing').className = 'stat-val err';
-      });
-
-      sdk.on('no_fill', function(data) {
-        log('no_fill', data);
-      });
-
+      setInterval(updateState, 2000);
     } catch(e) {
       log('error', {message: e.message});
-      document.getElementById('s-initialized').textContent = 'error: ' + e.message;
+      document.getElementById('s-initialized').textContent = 'error';
       document.getElementById('s-initialized').className = 'stat-val err';
       document.getElementById('btn-init').disabled = false;
     }
+  });
+
+  document.getElementById('btn-refresh').addEventListener('click', function() {
+    if (sdk) { log('cmd', 'refresh'); sdk.refresh(); }
+  });
+  document.getElementById('btn-show').addEventListener('click', function() {
+    if (sdk) { sdk.show(); document.getElementById('trillboards-container').style.display = 'block'; }
+  });
+  document.getElementById('btn-hide').addEventListener('click', function() {
+    if (sdk) { sdk.hide(); document.getElementById('trillboards-container').style.display = 'none'; }
   });
 </script>
 </body>
